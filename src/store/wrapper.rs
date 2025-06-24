@@ -41,10 +41,7 @@ impl Store {
     }
 
     /// Get a decided value by height
-    pub async fn get_decided_value(
-        &self,
-        height: Height,
-    ) -> Result<Option<super::DecidedValue>> {
+    pub async fn get_decided_value(&self, height: Height) -> Result<Option<super::DecidedValue>> {
         self.inner.get_decided_value(height).await
     }
 
@@ -86,7 +83,6 @@ impl Store {
             .await
     }
 }
-
 
 /// Internal trait to hide the generic parameter
 #[async_trait::async_trait]

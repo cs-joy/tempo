@@ -422,4 +422,3 @@ mod tests {
 
     // TODO: Add unit tests once we have test utilities for creating a test database
 }
-

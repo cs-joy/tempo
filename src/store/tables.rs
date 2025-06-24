@@ -1,15 +1,15 @@
 //! Database table definitions for consensus data.
 
-use crate::codec::{ProtoCodec, encode_commit_certificate, decode_commit_certificate};
+use crate::codec::{decode_commit_certificate, encode_commit_certificate, ProtoCodec};
 use crate::context::{BaseValue, MalachiteContext};
 use crate::height::Height;
 use malachitebft_app_channel::app::types::ProposedValue;
 use malachitebft_codec::Codec;
 use malachitebft_core_types::{CommitCertificate, Round};
-use reth_db::DatabaseError;
-use reth_db::table::{Compress, Decode, Decompress, Encode};
-use reth_db::{tables, TableViewer, TableSet, TableType};
 use reth_db::table::TableInfo;
+use reth_db::table::{Compress, Decode, Decompress, Encode};
+use reth_db::DatabaseError;
+use reth_db::{tables, TableSet, TableType, TableViewer};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -44,7 +44,7 @@ impl ProposalKey {
         let id_bytes = value_id.as_bytes();
         let len = id_bytes.len().min(32);
         value_id_hash[..len].copy_from_slice(&id_bytes[..len]);
-        
+
         Self {
             height: height.0,
             round: round.as_u32().unwrap_or(0),
@@ -146,18 +146,18 @@ impl Decode for ProposalKey {
         if value.len() != 44 {
             return Err(DatabaseError::Decode);
         }
-        
+
         let mut height_bytes = [0u8; 8];
         height_bytes.copy_from_slice(&value[0..8]);
         let height = u64::from_be_bytes(height_bytes);
-        
+
         let mut round_bytes = [0u8; 4];
         round_bytes.copy_from_slice(&value[8..12]);
         let round = u32::from_be_bytes(round_bytes);
-        
+
         let mut value_id_hash = [0u8; 32];
         value_id_hash.copy_from_slice(&value[12..44]);
-        
+
         Ok(Self {
             height,
             round,
@@ -173,13 +173,13 @@ impl Compress for DecidedValue {
     fn compress(self) -> Self::Compressed {
         // Encode value and certificate separately
         let mut data = Vec::new();
-        
+
         // Encode value
         let value_bytes = self.value.data.clone();
         let value_len = value_bytes.len() as u32;
         data.extend_from_slice(&value_len.to_le_bytes());
         data.extend_from_slice(&value_bytes);
-        
+
         // Encode certificate
         if let Ok(cert_proto) = encode_commit_certificate(&self.certificate) {
             use prost::Message;
@@ -188,7 +188,7 @@ impl Compress for DecidedValue {
             data.extend_from_slice(&cert_len.to_le_bytes());
             data.extend_from_slice(&cert_bytes);
         }
-        
+
         data
     }
 
@@ -201,7 +201,7 @@ impl Compress for DecidedValue {
 impl Decompress for DecidedValue {
     fn decompress(mut value: &[u8]) -> Result<Self, DatabaseError> {
         use prost::Message;
-        
+
         // Decode value length and data
         if value.len() < 4 {
             return Err(DatabaseError::Decode);
@@ -210,13 +210,13 @@ impl Decompress for DecidedValue {
         len_bytes.copy_from_slice(&value[..4]);
         let value_len = u32::from_le_bytes(len_bytes) as usize;
         value = &value[4..];
-        
+
         if value.len() < value_len {
             return Err(DatabaseError::Decode);
         }
         let value_data = value[..value_len].to_vec();
         value = &value[value_len..];
-        
+
         // Decode certificate length and data
         if value.len() < 4 {
             return Err(DatabaseError::Decode);
@@ -224,18 +224,18 @@ impl Decompress for DecidedValue {
         len_bytes.copy_from_slice(&value[..4]);
         let cert_len = u32::from_le_bytes(len_bytes) as usize;
         value = &value[4..];
-        
+
         if value.len() < cert_len {
             return Err(DatabaseError::Decode);
         }
         let cert_bytes = &value[..cert_len];
-        
+
         // Decode certificate
         let cert_proto = crate::proto::CommitCertificate::decode(cert_bytes)
             .map_err(|_| DatabaseError::Decode)?;
-        let certificate = decode_commit_certificate(cert_proto)
-            .map_err(|_| DatabaseError::Decode)?;
-        
+        let certificate =
+            decode_commit_certificate(cert_proto).map_err(|_| DatabaseError::Decode)?;
+
         Ok(DecidedValue {
             value: BaseValue { data: value_data },
             certificate,
@@ -249,7 +249,8 @@ impl Compress for StoredProposal {
 
     fn compress(self) -> Self::Compressed {
         // Use the ProtoCodec to encode the ProposedValue
-        ProtoCodec.encode(&self.proposal)
+        ProtoCodec
+            .encode(&self.proposal)
             .map(|bytes| bytes.to_vec())
             .unwrap_or_default()
     }
@@ -263,9 +264,10 @@ impl Compress for StoredProposal {
 impl Decompress for StoredProposal {
     fn decompress(value: &[u8]) -> Result<Self, DatabaseError> {
         // Use the ProtoCodec to decode the ProposedValue
-        let proposal = ProtoCodec.decode(bytes::Bytes::from(value.to_vec()))
+        let proposal = ProtoCodec
+            .decode(bytes::Bytes::from(value.to_vec()))
             .map_err(|_| DatabaseError::Decode)?;
-        
+
         Ok(StoredProposal { proposal })
     }
 }

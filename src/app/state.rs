@@ -333,7 +333,6 @@ pub struct DecidedValue {
     pub certificate: CommitCertificate<MalachiteContext>,
 }
 
-
 // Standalone functions
 
 /// Reload the tracing subscriber log level based on the current height and round
