@@ -7,7 +7,7 @@ use reth_node_builder::{
     components::ComponentsBuilder, FullNodeTypes, Node, NodeComponentsBuilder, NodeTypes,
 };
 use reth_node_builder::{BuilderContext, ConfigureEvm};
-use reth_node_ethereum::node::{EthereumAddOns, EthereumNetworkBuilder, EthereumPoolBuilder};
+use reth_node_ethereum::node::{EthereumAddOns, EthereumNetworkBuilder, EthereumPoolBuilder, EthereumEthApiBuilder, EthereumEngineValidatorBuilder};
 use reth_trie_db::MerklePatriciaTrie;
 use tokio::sync::{broadcast, mpsc};
 use tracing::warn;
@@ -88,6 +88,8 @@ where
             N,
             <Self::ComponentsBuilder as NodeComponentsBuilder<N>>::Components,
         >,
+        EthereumEthApiBuilder,
+        EthereumEngineValidatorBuilder,
     >;
 
     fn components_builder(&self) -> Self::ComponentsBuilder {
