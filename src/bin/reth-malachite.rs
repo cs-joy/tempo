@@ -18,23 +18,19 @@ struct NoArgs;
 fn main() -> eyre::Result<()> {
     reth_cli_util::sigsegv_handler::install();
 
-    // Initialize the runtime for async operations
-    let runtime = tokio::runtime::Runtime::new()?;
+    // Create the context and initial state
+    let ctx = MalachiteContext::default();
+    let config = Config::new();
 
-    runtime.block_on(async {
-        // Create the context and initial state
-        let ctx = MalachiteContext::default();
-        let config = Config::new();
+    // Create a genesis with initial validators
+    let validator_address = Address::new([1; 20]);
+    let validator_info = ValidatorInfo::new(validator_address, 1000, vec![0; 32]);
+    let genesis = Genesis::new("1".to_string()).with_validators(vec![validator_info]);
 
-        // Create a genesis with initial validators
-        let validator_address = Address::new([1; 20]);
-        let validator_info = ValidatorInfo::new(validator_address, 1000, vec![0; 32]);
-        let genesis = Genesis::new("1".to_string()).with_validators(vec![validator_info]);
+    // Create the node address (in production, derive from public key)
+    let address = Address::new([0; 20]);
 
-        // Create the node address (in production, derive from public key)
-        let address = Address::new([0; 20]);
-
-        Cli::<MalachiteChainSpecParser, NoArgs>::parse().run(|builder, _: NoArgs| async move {
+    Cli::<MalachiteChainSpecParser, NoArgs>::parse().run(|builder, _: NoArgs| async move {
             // Launch the Reth node first to get the engine handle
             let reth_node = RethNode::new();
             let NodeHandle {
@@ -87,5 +83,4 @@ fn main() -> eyre::Result<()> {
 
             Ok(())
         })
-    })
 }
