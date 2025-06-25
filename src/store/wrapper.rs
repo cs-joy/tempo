@@ -46,10 +46,10 @@ impl Store {
     /// Store a decided value with its certificate
     pub async fn store_decided_value(
         &self,
-        certificate: &CommitCertificate<MalachiteContext>,
+        certificate: CommitCertificate<MalachiteContext>,
         value: Value,
     ) -> Result<()> {
-        self.inner.store_decided_value(certificate, value).await
+        self.inner.store_decided_value(&certificate, value).await
     }
 
     /// Get undecided proposals for a height and round
@@ -87,32 +87,58 @@ impl Store {
     }
 }
 
-/// Internal trait to hide the generic parameter
+/// Internal trait to encapsulate storage operations needed by State.
+///
+/// This trait defines the storage API that State requires to manage the blockchain state.
+/// It serves as an abstraction boundary between State's business logic and the underlying
+/// storage implementation (RethStore).
+///
+/// API boundaries:
+/// - **Consensus -> State**: High-level operations like commit(), get_decided_value()
+/// - **State -> Store**: Low-level storage operations defined in this trait
+/// - **Store -> RethStore**: Implementation details using reth's database
 #[async_trait::async_trait]
 trait StoreOps {
-    async fn max_decided_value_height(&self) -> Option<Height>;
-    async fn get_decided_value(&self, height: Height) -> Result<Option<super::DecidedValue>>;
+    // Core storage operations used by State:
+
+    /// Store a decided (committed) value with its commit certificate
     async fn store_decided_value(
         &self,
         certificate: &CommitCertificate<MalachiteContext>,
         value: Value,
     ) -> Result<()>;
-    async fn get_undecided_proposals(
-        &self,
-        height: Height,
-        round: Round,
-    ) -> Result<Vec<ProposedValue<MalachiteContext>>>;
+
+    /// Retrieve a decided value at a specific height
+    async fn get_decided_value(&self, height: Height) -> Result<Option<super::DecidedValue>>;
+
+    /// Store a proposal that hasn't been decided yet
     async fn store_undecided_proposal(
         &self,
         proposal: ProposedValue<MalachiteContext>,
     ) -> Result<()>;
+
+    /// Retrieve a specific undecided proposal
     async fn get_undecided_proposal(
         &self,
         height: Height,
         round: Round,
         value_id: ValueId,
     ) -> Result<Option<ProposedValue<MalachiteContext>>>;
+
+    /// Verify that all required database tables exist
     async fn verify_tables(&self) -> Result<()>;
+
+    // Additional operations that may be needed as State evolves:
+
+    /// Get the highest height with a decided value
+    async fn max_decided_value_height(&self) -> Option<Height>;
+
+    /// Get all proposals for a given height and round
+    async fn get_undecided_proposals(
+        &self,
+        height: Height,
+        round: Round,
+    ) -> Result<Vec<ProposedValue<MalachiteContext>>>;
 }
 
 #[async_trait::async_trait]
