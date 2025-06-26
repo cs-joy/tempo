@@ -153,6 +153,7 @@ pub struct State {
 }
 
 impl State {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ctx: MalachiteContext,
         config: Config,
@@ -188,6 +189,7 @@ impl State {
     ///
     /// This factory method encapsulates Store creation and initialization,
     /// ensuring that Store is not directly accessible outside the State module.
+    #[allow(clippy::too_many_arguments)]
     pub async fn from_provider<P>(
         ctx: MalachiteContext,
         config: Config,

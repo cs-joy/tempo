@@ -98,7 +98,7 @@ pub fn load_genesis(genesis_path: &Path) -> Result<Genesis> {
         let voting_power = tm_val.power.parse::<u64>()?;
 
         // Decode public key from base64
-        let public_key = base64::decode(&tm_val.pub_key.value)?;
+        let public_key = STANDARD.decode(&tm_val.pub_key.value)?;
 
         validators.push(ValidatorInfo::new(address, voting_power, public_key));
     }
@@ -148,8 +148,8 @@ pub fn load_validator_key(key_path: &Path) -> Result<(Address, Vec<u8>, Vec<u8>)
     let address = Address::new(addr_array);
 
     // Decode keys from base64
-    let public_key = base64::decode(&tm_key.pub_key.value)?;
-    let private_key_full = base64::decode(&tm_key.priv_key.value)?;
+    let public_key = STANDARD.decode(&tm_key.pub_key.value)?;
+    let private_key_full = STANDARD.decode(&tm_key.priv_key.value)?;
 
     // Extract just the private key part (first 32 bytes)
     // Tendermint format concatenates private key + public key
@@ -159,4 +159,4 @@ pub fn load_validator_key(key_path: &Path) -> Result<(Address, Vec<u8>, Vec<u8>)
 }
 
 // Add base64 dependency
-use base64;
+use base64::{engine::general_purpose::STANDARD, Engine};
