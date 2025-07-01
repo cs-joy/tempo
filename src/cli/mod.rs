@@ -128,6 +128,25 @@ fn custom_malachite_chain() -> ChainSpec {
         number: Some(0),
         alloc: {
             let mut alloc = BTreeMap::new();
+            // Add test accounts with balance
+            let test_accounts = vec![
+                "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+                "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+                "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+                "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+            ];
+
+            for addr in test_accounts {
+                alloc.insert(
+                    addr.parse().unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str_radix("D3C21BCECCEDA1000000", 16).unwrap(),
+                        ..Default::default()
+                    },
+                );
+            }
+
+            // Keep original account too
             alloc.insert(
                 "0x6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b"
                     .parse()
