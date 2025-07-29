@@ -1,5 +1,6 @@
 cross_compile := "true"
 cargo_build_binary := if cross_compile == "true" { "cross" } else { "cargo" }
+act_debug_mode := "false"
 
 [group('deps')]
 install-cross:
@@ -16,5 +17,5 @@ build-all extra_args="": (_build "reth-malachite" extra_args)
 _build-release target extra_args="": (_build target "-r " + extra_args)
 
 _build target extra_args="":
-    CROSS_CONTAINER_IN_CONTAINER=true RUSTFLAGS="-C link-arg=-lgcc -Clink-arg=-static-libgcc" \
+    CROSS_CONTAINER_IN_CONTAINER={{act_debug_mode}} RUSTFLAGS="-C link-arg=-lgcc -Clink-arg=-static-libgcc" \
         {{cargo_build_binary}} build {{extra_args}} --bin {{target}}
