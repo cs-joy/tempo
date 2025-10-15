@@ -5,7 +5,7 @@ use super::{
     slots::{ASK_BITMAPS, ASK_TICK_LEVELS, BID_BITMAPS, BID_TICK_LEVELS, ORDERBOOKS},
 };
 use crate::contracts::{StorageProvider, storage::slots::mapping_slot};
-use alloy::primitives::{Address, B256, U256};
+use alloy::primitives::{Address, B256, U256, keccak256};
 use revm::interpreter::instructions::utility::{IntoAddress, IntoU256};
 
 /// Constants from Solidity implementation
@@ -17,11 +17,6 @@ pub const PRICE_SCALE: u32 = 100_000;
 /// Orders are maintained in FIFO order at each tick level
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TickLevel {
-    // TODO: add tick
-    // TODO: add bid or ask
-    // TODO: add book key
-    //
-    //
     /// Order ID of the first order at this tick (0 if empty)
     pub head: u128,
     /// Order ID of the last order at this tick (0 if empty)
@@ -256,9 +251,9 @@ impl Orderbook {
 
     /// Load an Orderbook from storage
     pub fn from_storage<S: StorageProvider>(
+        book_key: B256,
         storage: &mut S,
         address: Address,
-        book_key: B256,
     ) -> Self {
         let orderbook_slot = mapping_slot(book_key.as_slice(), ORDERBOOKS);
 
@@ -278,15 +273,18 @@ impl Orderbook {
                 orderbook_slot + offsets::ORDERBOOK_BEST_BID_TICK_OFFSET,
             )
             .expect("TODO: handle error")
-            .to::<i16>();
+            .to::<u16>() as i16;
 
+        // `tick` is stored into the least significant 16 bits of U256.
+        // When loading from storage, we first load as u16
+        // and then cast to i16 to reinterpret those bits as a signed value.
         let best_ask_tick = storage
             .sload(
                 address,
                 orderbook_slot + offsets::ORDERBOOK_BEST_ASK_TICK_OFFSET,
             )
             .expect("TODO: handle error")
-            .to::<i16>();
+            .to::<u16>() as i16;
 
         Self {
             base,
@@ -297,7 +295,8 @@ impl Orderbook {
     }
 
     /// Store this Orderbook to storage
-    pub fn store<S: StorageProvider>(&self, storage: &mut S, address: Address, book_key: B256) {
+    pub fn store<S: StorageProvider>(&self, storage: &mut S, address: Address) {
+        let book_key = compute_book_key(self.base, self.quote);
         let orderbook_slot = mapping_slot(book_key.as_slice(), ORDERBOOKS);
 
         storage
@@ -516,6 +515,22 @@ impl<'a, S: StorageProvider> TickBitmap<'a, S> {
     }
 }
 
+/// Compute deterministic book key from base, quote token pair
+pub fn compute_book_key(token_a: Address, token_b: Address) -> B256 {
+    // Sort tokens to ensure deterministic key
+    let (token_a, token_b) = if token_a < token_b {
+        (token_a, token_b)
+    } else {
+        (token_b, token_a)
+    };
+
+    // Compute keccak256(abi.encodePacked(tokenA, tokenB))
+    let mut buf = [0u8; 40];
+    buf[..20].copy_from_slice(token_a.as_slice());
+    buf[20..].copy_from_slice(token_b.as_slice());
+    keccak256(buf)
+}
+
 /// Convert relative tick to scaled price
 pub fn tick_to_price(tick: i16) -> u32 {
     (PRICE_SCALE as i32 + tick as i32) as u32
@@ -599,6 +614,31 @@ mod tests {
         // Test boundary values
         assert_eq!(tick_to_price(MIN_TICK), PRICE_SCALE - 2000);
         assert_eq!(tick_to_price(MAX_TICK), PRICE_SCALE + 2000);
+    }
+
+    #[test]
+    fn test_compute_book_key() {
+        let token_a = address!("0x1111111111111111111111111111111111111111");
+        let token_b = address!("0x2222222222222222222222222222222222222222");
+
+        let key_ab = compute_book_key(token_a, token_b);
+        let key_ba = compute_book_key(token_b, token_a);
+        assert_eq!(key_ab, key_ba);
+
+        assert_eq!(
+            key_ab, key_ba,
+            "Book key should be the same regardless of address order"
+        );
+
+        let mut buf = [0u8; 40];
+        buf[..20].copy_from_slice(token_a.as_slice());
+        buf[20..].copy_from_slice(token_b.as_slice());
+        let expected_hash = keccak256(buf);
+
+        assert_eq!(
+            key_ab, expected_hash,
+            "Book key should match manual keccak256 computation"
+        );
     }
 
     mod bitmap_tests {

@@ -332,12 +332,15 @@ sol! {
         // Errors
         error OrderDoesNotExist();
         error Unauthorized();
+        error FillFailed();
+        error InvalidTick();
         error InsufficientBalance();
         error InvalidFlipTick();
         error TickOutOfBounds(int16 tick);
         error InsufficientLiquidity();
         error MaxInputExceeded();
         error InsufficientOutput();
+        error PairDoesNotExist();
     }
 }
 
@@ -548,9 +551,24 @@ impl StablecoinExchangeError {
         Self::OrderDoesNotExist(IStablecoinExchange::OrderDoesNotExist {})
     }
 
+    /// Creates an error when an order does not exist.
+    pub const fn pair_does_not_exist() -> Self {
+        Self::PairDoesNotExist(IStablecoinExchange::PairDoesNotExist {})
+    }
+
     /// Creates an error for unauthorized access.
     pub const fn unauthorized() -> Self {
         Self::Unauthorized(IStablecoinExchange::Unauthorized {})
+    }
+
+    /// Creates an error for when fill fails
+    pub const fn fill_failed() -> Self {
+        Self::FillFailed(IStablecoinExchange::FillFailed {})
+    }
+
+    /// Creates an error when an invalid tick is provided
+    pub const fn invalid_tick() -> Self {
+        Self::InvalidTick(IStablecoinExchange::InvalidTick {})
     }
 
     /// Creates an error for insufficient balance.
